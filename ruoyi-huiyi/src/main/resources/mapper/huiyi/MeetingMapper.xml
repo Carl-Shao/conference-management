@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.huiyi.mapper.MeetingMapper">
+    
+    <resultMap type="Meeting" id="MeetingResult">
+        <result property="id"    column="id"    />
+        <result property="title"    column="title"    />
+        <result property="roomId"    column="room_id"    />
+        <result property="meetingDate"    column="meeting_date"    />
+        <result property="startTime"    column="start_time"    />
+        <result property="endTime"    column="end_time"    />
+        <result property="organizerNo"    column="organizer_no"    />
+        <result property="participantNos"    column="participant_nos"    />
+        <result property="description"    column="description"    />
+        <result property="status"    column="status"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMeetingVo">
+        select id, title, room_id, meeting_date, 
+               date_format(start_time, '%H:%i:%s') as start_time, 
+               date_format(end_time, '%H:%i:%s') as end_time, 
+               organizer_no, participant_nos, description, status, create_time, update_time from meeting
+    </sql>
+
+    <select id="selectMeetingList" parameterType="Meeting" resultMap="MeetingResult">
+        <include refid="selectMeetingVo"/>
+        <where>  
+            <if test="title != null  and title != ''"> and title = #{title}</if>
+            <if test="roomId != null "> and room_id = #{roomId}</if>
+            <if test="meetingDate != null "> and meeting_date = #{meetingDate}</if>
+            <if test="startTime != null "> and start_time = #{startTime}</if>
+            <if test="endTime != null "> and end_time = #{endTime}</if>
+            <if test="organizerNo != null  and organizerNo != ''"> and organizer_no = #{organizerNo}</if>
+            <if test="participantNos != null  and participantNos != ''"> and participant_nos = #{participantNos}</if>
+            <if test="description != null  and description != ''"> and description = #{description}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+        </where>
+    </select>
+    
+    <select id="selectMeetingById" parameterType="Long" resultMap="MeetingResult">
+        <include refid="selectMeetingVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertMeeting" parameterType="Meeting" useGeneratedKeys="true" keyProperty="id">
+        insert into meeting
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="title != null and title != ''">title,</if>
+            <if test="roomId != null">room_id,</if>
+            <if test="meetingDate != null">meeting_date,</if>
+            <if test="startTime != null">start_time,</if>
+            <if test="endTime != null">end_time,</if>
+            <if test="organizerNo != null and organizerNo != ''">organizer_no,</if>
+            <if test="participantNos != null">participant_nos,</if>
+            <if test="description != null">description,</if>
+            <if test="status != null">status,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="title != null and title != ''">#{title},</if>
+            <if test="roomId != null">#{roomId},</if>
+            <if test="meetingDate != null">#{meetingDate},</if>
+            <if test="startTime != null">#{startTime},</if>
+            <if test="endTime != null">#{endTime},</if>
+            <if test="organizerNo != null and organizerNo != ''">#{organizerNo},</if>
+            <if test="participantNos != null">#{participantNos},</if>
+            <if test="description != null">#{description},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateMeeting" parameterType="Meeting">
+        update meeting
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="roomId != null">room_id = #{roomId},</if>
+            <if test="meetingDate != null">meeting_date = #{meetingDate},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="organizerNo != null and organizerNo != ''">organizer_no = #{organizerNo},</if>
+            <if test="participantNos != null">participant_nos = #{participantNos},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteMeetingById" parameterType="Long">
+        delete from meeting where id = #{id}
+    </delete>
+
+    <delete id="deleteMeetingByIds" parameterType="String">
+        delete from meeting where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

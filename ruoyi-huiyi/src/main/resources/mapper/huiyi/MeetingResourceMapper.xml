@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.huiyi.mapper.MeetingResourceMapper">
+    
+    <resultMap type="MeetingResource" id="MeetingResourceResult">
+        <result property="id"    column="id"    />
+        <result property="meetingId"    column="meeting_id"    />
+        <result property="meetingTitle"    column="meeting_title"    />
+        <result property="fullTranscript"    column="full_transcript"    />
+        <result property="summaryContent"    column="summary_content"    />
+        <result property="recordingPath"    column="recording_path"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMeetingResourceVo">
+        select id, meeting_id, meeting_title, full_transcript, summary_content, recording_path, create_time, update_time from meeting_resource
+    </sql>
+
+    <select id="selectMeetingResourceList" parameterType="MeetingResource" resultMap="MeetingResourceResult">
+        <include refid="selectMeetingResourceVo"/>
+        <where>  
+            <if test="meetingId != null "> and meeting_id = #{meetingId}</if>
+            <if test="meetingTitle != null  and meetingTitle != ''"> and meeting_title = #{meetingTitle}</if>
+            <if test="fullTranscript != null  and fullTranscript != ''"> and full_transcript = #{fullTranscript}</if>
+            <if test="summaryContent != null  and summaryContent != ''"> and summary_content = #{summaryContent}</if>
+            <if test="recordingPath != null  and recordingPath != ''"> and recording_path = #{recordingPath}</if>
+        </where>
+    </select>
+    
+    <select id="selectMeetingResourceById" parameterType="Long" resultMap="MeetingResourceResult">
+        <include refid="selectMeetingResourceVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertMeetingResource" parameterType="MeetingResource" useGeneratedKeys="true" keyProperty="id">
+        insert into meeting_resource
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="meetingId != null">meeting_id,</if>
+            <if test="meetingTitle != null">meeting_title,</if>
+            <if test="fullTranscript != null">full_transcript,</if>
+            <if test="summaryContent != null">summary_content,</if>
+            <if test="recordingPath != null">recording_path,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="meetingId != null">#{meetingId},</if>
+            <if test="meetingTitle != null">#{meetingTitle},</if>
+            <if test="fullTranscript != null">#{fullTranscript},</if>
+            <if test="summaryContent != null">#{summaryContent},</if>
+            <if test="recordingPath != null">#{recordingPath},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateMeetingResource" parameterType="MeetingResource">
+        update meeting_resource
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="meetingId != null">meeting_id = #{meetingId},</if>
+            <if test="meetingTitle != null">meeting_title = #{meetingTitle},</if>
+            <if test="fullTranscript != null">full_transcript = #{fullTranscript},</if>
+            <if test="summaryContent != null">summary_content = #{summaryContent},</if>
+            <if test="recordingPath != null">recording_path = #{recordingPath},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteMeetingResourceById" parameterType="Long">
+        delete from meeting_resource where id = #{id}
+    </delete>
+
+    <delete id="deleteMeetingResourceByIds" parameterType="String">
+        delete from meeting_resource where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>
