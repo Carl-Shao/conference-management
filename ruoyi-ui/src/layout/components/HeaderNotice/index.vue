@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
   <div>
     <el-popover ref="noticePopover" placement="bottom-end" width="320" trigger="manual" :value="noticeVisible" popper-class="notice-popover">
       <div class="notice-header">
@@ -226,4 +226,4 @@ export default {
     a { color: #409EFF; text-decoration: underline; }
   }
 }
-</style>
+</style> -->

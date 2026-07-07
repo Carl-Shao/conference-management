@@ -225,8 +225,8 @@ export default {
       employeeList: [],
       // 角色：展示文案与后端存储值
       roleOptions: [
-        { label: "秘书", value: "secretary" },
-        { label: "使用者", value: "participant" }
+        { label: "管理员", value: "manager" },
+        { label: "普通员工", value: "participants" }
       ],
       // 弹出层标题
       title: "",
