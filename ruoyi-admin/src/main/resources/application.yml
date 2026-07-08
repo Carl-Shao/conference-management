@@ -145,3 +145,10 @@ xss:
   excludes: /system/notice
   # 匹配链接
   urlPatterns: /system/*,/monitor/*,/tool/*
+
+# AI服务配置
+ai:
+  services:
+    # AI服务API地址
+    api:
+      url: http://localhost:5001
