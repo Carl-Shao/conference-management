@@ -14,47 +14,32 @@ public interface IMeetingAIService {
     Map<String, Object> healthCheck();
 
     /**
-     * 启动RTSP音频录制和实时ASR转录
+     * 开始会议录制（音频+视频）
      */
-    Map<String, Object> startAsrRecording(String rtspUrl, String roomId);
+    Map<String, Object> startMeeting(String rtspUrl, String roomId);
 
     /**
-     * 启动完整RTSP音频录制
+     * 结束会议录制（音频+视频）
      */
-    Map<String, Object> startFullRecording(String rtspUrl, String roomId);
+    Map<String, Object> stopMeeting(String roomId);
 
     /**
-     * 停止ASR录音
-     */
-    Map<String, Object> stopAsrRecording(String roomId);
-
-    /**
-     * 停止完整录音
-     */
-    Map<String, Object> stopFullRecording();
-
-    /**
-     * 获取完整录音文件路径
-     */
-    Map<String, Object> getRecordingPath(String roomId);
-
-    /**
-     * 获取实时转录文本
+     * 获取会议转录文本
      */
     Map<String, Object> getTranscript(String roomId);
 
     /**
-     * 从转录文本生成会议纪要
+     * 提交会议纪要生成任务
      */
-    Map<String, Object> generateMinutes(String roomId, String transcript);
+    Map<String, Object> generateMinutes(String roomId);
+
+    /**
+     * 获取会议纪要生成状态
+     */
+    Map<String, Object> getMinutesStatus(String roomId);
 
     /**
      * 获取已生成的会议纪要
      */
     Map<String, Object> getMinutes(String roomId);
-
-    /**
-     * 获取服务状态
-     */
-    Map<String, Object> getStatus();
 }

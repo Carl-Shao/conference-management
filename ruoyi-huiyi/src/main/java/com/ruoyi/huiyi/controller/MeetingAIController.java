@@ -34,76 +34,36 @@ public class MeetingAIController {
     }
 
     /**
-     * 启动ASR录音
+     * 开始会议录制
      */
-    @PostMapping("/asr/start")
-    public AjaxResult startAsrRecording(@RequestBody AsrRequestDto request) {
+    @PostMapping("/meeting/start")
+    public AjaxResult startMeeting(@RequestBody AsrRequestDto request) {
         try {
-            Map<String, Object> result = meetingAIService.startAsrRecording(
+            Map<String, Object> result = meetingAIService.startMeeting(
                     request.getRtspUrl(), request.getRoomId());
             return AjaxResult.success(result);
         } catch (Exception e) {
-            return AjaxResult.error("Start ASR recording failed: " + e.getMessage());
+            return AjaxResult.error("Start meeting recording failed: " + e.getMessage());
         }
     }
 
     /**
-     * 启动完整录音
+     * 结束会议录制
      */
-    @PostMapping("/recording/start")
-    public AjaxResult startFullRecording(@RequestBody AsrRequestDto request) {
+    @PostMapping("/meeting/stop")
+    public AjaxResult stopMeeting(@RequestParam String roomId) {
         try {
-            Map<String, Object> result = meetingAIService.startFullRecording(
-                    request.getRtspUrl(), request.getRoomId());
+            Map<String, Object> result = meetingAIService.stopMeeting(roomId);
             return AjaxResult.success(result);
         } catch (Exception e) {
-            return AjaxResult.error("Start full recording failed: " + e.getMessage());
+            return AjaxResult.error("Stop meeting recording failed: " + e.getMessage());
         }
     }
 
     /**
-     * 停止ASR录音
+     * 获取会议转录文本
      */
-    @PostMapping("/asr/stop")
-    public AjaxResult stopAsrRecording(@RequestParam String roomId) {
-        try {
-            Map<String, Object> result = meetingAIService.stopAsrRecording(roomId);
-            return AjaxResult.success(result);
-        } catch (Exception e) {
-            return AjaxResult.error("Stop ASR recording failed: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 停止完整录音
-     */
-    @PostMapping("/recording/stop")
-    public AjaxResult stopFullRecording() {
-        try {
-            Map<String, Object> result = meetingAIService.stopFullRecording();
-            return AjaxResult.success(result);
-        } catch (Exception e) {
-            return AjaxResult.error("Stop full recording failed: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 获取录音路径
-     */
-    @GetMapping("/recording/path/{roomId}")
-    public AjaxResult getRecordingPath(@PathVariable String roomId) {
-        try {
-            Map<String, Object> result = meetingAIService.getRecordingPath(roomId);
-            return AjaxResult.success(result);
-        } catch (Exception e) {
-            return AjaxResult.error("Get recording path failed: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 获取转录文本
-     */
-    @GetMapping("/asr/transcript/{roomId}")
+    @GetMapping("/transcript/{roomId}")
     public AjaxResult getTranscript(@PathVariable String roomId) {
         try {
             Map<String, Object> result = meetingAIService.getTranscript(roomId);
@@ -116,14 +76,26 @@ public class MeetingAIController {
     /**
      * 生成会议纪要
      */
-    @PostMapping("/minutes/generate")
-    public AjaxResult generateMinutes(@RequestBody MinutesRequestDto request) {
+    @PostMapping("/minutes/generate/{roomId}")
+    public AjaxResult generateMinutes(@PathVariable String roomId) {
         try {
-            Map<String, Object> result = meetingAIService.generateMinutes(
-                    request.getRoomId(), request.getTranscript());
+            Map<String, Object> result = meetingAIService.generateMinutes(roomId);
             return AjaxResult.success(result);
         } catch (Exception e) {
             return AjaxResult.error("Generate minutes failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取会议纪要生成状态
+     */
+    @GetMapping("/minutes/status/{roomId}")
+    public AjaxResult getMinutesStatus(@PathVariable String roomId) {
+        try {
+            Map<String, Object> result = meetingAIService.getMinutesStatus(roomId);
+            return AjaxResult.success(result);
+        } catch (Exception e) {
+            return AjaxResult.error("Get minutes status failed: " + e.getMessage());
         }
     }
 
@@ -137,19 +109,6 @@ public class MeetingAIController {
             return AjaxResult.success(result);
         } catch (Exception e) {
             return AjaxResult.error("Get minutes failed: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 获取服务状态
-     */
-    @GetMapping("/status")
-    public AjaxResult getStatus() {
-        try {
-            Map<String, Object> result = meetingAIService.getStatus();
-            return AjaxResult.success(result);
-        } catch (Exception e) {
-            return AjaxResult.error("Get status failed: " + e.getMessage());
         }
     }
 }

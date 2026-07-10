@@ -16,7 +16,7 @@ import java.util.Map;
 @Service
 public class MeetingAIServiceImpl implements IMeetingAIService {
 
-    @Value("${ai.services.api.url:http://localhost:5001}")
+    @Value("${ai.services.api.url:http://localhost:5000}")
     private String aiServicesApiUrl;
 
     /**
@@ -28,161 +28,114 @@ public class MeetingAIServiceImpl implements IMeetingAIService {
 
     @Override
     public Map<String, Object> healthCheck() {
-        String url = buildApiUrl("/api/v1/health");
+        String url = buildApiUrl("/api/health");
         try {
             String response = HttpUtils.sendGet(url);
             return JSON.parseObject(response, Map.class);
         } catch (Exception e) {
             Map<String, Object> errorResult = new HashMap<>();
-            errorResult.put("success", false);
-            errorResult.put("message", "Error calling health check API: " + e.getMessage());
+            errorResult.put("code", 500);
+            errorResult.put("msg", "Error calling health check API: " + e.getMessage());
+            errorResult.put("data", null);
             return errorResult;
         }
     }
 
     @Override
-    public Map<String, Object> startAsrRecording(String rtspUrl, String roomId) {
-        String url = buildApiUrl("/api/v1/asr/start-recording");
+    public Map<String, Object> startMeeting(String rtspUrl, String roomId) {
+        String url = buildApiUrl("/api/meeting/start");
         try {
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("rtsp_url", rtspUrl);
-            requestBody.put("room_id", roomId);
+            requestBody.put("rtspUrl", rtspUrl);
+            requestBody.put("roomId", roomId);
 
             String jsonData = JSON.toJSONString(requestBody);
             String response = HttpUtils.sendPost(url, jsonData, "application/json");
             return JSON.parseObject(response, Map.class);
         } catch (Exception e) {
             Map<String, Object> errorResult = new HashMap<>();
-            errorResult.put("success", false);
-            errorResult.put("message", "Error starting ASR recording: " + e.getMessage());
+            errorResult.put("code", 500);
+            errorResult.put("msg", "Error starting meeting recording: " + e.getMessage());
+            errorResult.put("data", null);
             return errorResult;
         }
     }
 
     @Override
-    public Map<String, Object> startFullRecording(String rtspUrl, String roomId) {
-        String url = buildApiUrl("/api/v1/recording/start-full");
+    public Map<String, Object> stopMeeting(String roomId) {
+        String url = buildApiUrl("/api/meeting/stop");
         try {
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("rtsp_url", rtspUrl);
-            requestBody.put("room_id", roomId);
+            requestBody.put("roomId", roomId);
 
             String jsonData = JSON.toJSONString(requestBody);
             String response = HttpUtils.sendPost(url, jsonData, "application/json");
             return JSON.parseObject(response, Map.class);
         } catch (Exception e) {
             Map<String, Object> errorResult = new HashMap<>();
-            errorResult.put("success", false);
-            errorResult.put("message", "Error starting full recording: " + e.getMessage());
-            return errorResult;
-        }
-    }
-
-    @Override
-    public Map<String, Object> stopAsrRecording(String roomId) {
-        String url = buildApiUrl("/api/v1/asr/stop-recording");
-        try {
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("room_id", roomId);
-
-            String jsonData = JSON.toJSONString(requestBody);
-            String response = HttpUtils.sendPost(url, jsonData, "application/json");
-            return JSON.parseObject(response, Map.class);
-        } catch (Exception e) {
-            Map<String, Object> errorResult = new HashMap<>();
-            errorResult.put("success", false);
-            errorResult.put("message", "Error stopping ASR recording: " + e.getMessage());
-            return errorResult;
-        }
-    }
-
-    @Override
-    public Map<String, Object> stopFullRecording() {
-        String url = buildApiUrl("/api/v1/recording/stop-full");
-        try {
-            String response = HttpUtils.sendPost(url, "{}", "application/json");
-            return JSON.parseObject(response, Map.class);
-        } catch (Exception e) {
-            Map<String, Object> errorResult = new HashMap<>();
-            errorResult.put("success", false);
-            errorResult.put("message", "Error stopping full recording: " + e.getMessage());
-            return errorResult;
-        }
-    }
-
-    @Override
-    public Map<String, Object> getRecordingPath(String roomId) {
-        String url = buildApiUrl("/api/v1/recording/path/" + roomId);
-        try {
-            String response = HttpUtils.sendGet(url);
-            return JSON.parseObject(response, Map.class);
-        } catch (Exception e) {
-            Map<String, Object> errorResult = new HashMap<>();
-            errorResult.put("success", false);
-            errorResult.put("message", "Error getting recording path: " + e.getMessage());
+            errorResult.put("code", 500);
+            errorResult.put("msg", "Error stopping meeting recording: " + e.getMessage());
+            errorResult.put("data", null);
             return errorResult;
         }
     }
 
     @Override
     public Map<String, Object> getTranscript(String roomId) {
-        String url = buildApiUrl("/api/v1/asr/get-transcript/" + roomId);
+        String url = buildApiUrl("/api/meeting/" + roomId + "/transcript");
         try {
             String response = HttpUtils.sendGet(url);
             return JSON.parseObject(response, Map.class);
         } catch (Exception e) {
             Map<String, Object> errorResult = new HashMap<>();
-            errorResult.put("success", false);
-            errorResult.put("message", "Error getting transcript: " + e.getMessage());
+            errorResult.put("code", 500);
+            errorResult.put("msg", "Error getting transcript: " + e.getMessage());
+            errorResult.put("data", null);
             return errorResult;
         }
     }
 
     @Override
-    public Map<String, Object> generateMinutes(String roomId, String transcript) {
-        String url = buildApiUrl("/api/v1/minutes/generate");
+    public Map<String, Object> generateMinutes(String roomId) {
+        String url = buildApiUrl("/api/meeting/" + roomId + "/minutes/generate");
         try {
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("room_id", roomId);
-            if (transcript != null) {
-                requestBody.put("transcript", transcript);
-            }
-
-            String jsonData = JSON.toJSONString(requestBody);
-            String response = HttpUtils.sendPost(url, jsonData, "application/json");
+            String response = HttpUtils.sendPost(url, "{}", "application/json");
             return JSON.parseObject(response, Map.class);
         } catch (Exception e) {
             Map<String, Object> errorResult = new HashMap<>();
-            errorResult.put("success", false);
-            errorResult.put("message", "Error generating minutes: " + e.getMessage());
+            errorResult.put("code", 500);
+            errorResult.put("msg", "Error generating minutes: " + e.getMessage());
+            errorResult.put("data", null);
+            return errorResult;
+        }
+    }
+
+    @Override
+    public Map<String, Object> getMinutesStatus(String roomId) {
+        String url = buildApiUrl("/api/meeting/" + roomId + "/minutes/status");
+        try {
+            String response = HttpUtils.sendGet(url);
+            return JSON.parseObject(response, Map.class);
+        } catch (Exception e) {
+            Map<String, Object> errorResult = new HashMap<>();
+            errorResult.put("code", 500);
+            errorResult.put("msg", "Error getting minutes status: " + e.getMessage());
+            errorResult.put("data", null);
             return errorResult;
         }
     }
 
     @Override
     public Map<String, Object> getMinutes(String roomId) {
-        String url = buildApiUrl("/api/v1/minutes/get/" + roomId);
+        String url = buildApiUrl("/api/meeting/" + roomId + "/minutes");
         try {
             String response = HttpUtils.sendGet(url);
             return JSON.parseObject(response, Map.class);
         } catch (Exception e) {
             Map<String, Object> errorResult = new HashMap<>();
-            errorResult.put("success", false);
-            errorResult.put("message", "Error getting minutes: " + e.getMessage());
-            return errorResult;
-        }
-    }
-
-    @Override
-    public Map<String, Object> getStatus() {
-        String url = buildApiUrl("/api/v1/status");
-        try {
-            String response = HttpUtils.sendGet(url);
-            return JSON.parseObject(response, Map.class);
-        } catch (Exception e) {
-            Map<String, Object> errorResult = new HashMap<>();
-            errorResult.put("success", false);
-            errorResult.put("message", "Error getting status: " + e.getMessage());
+            errorResult.put("code", 500);
+            errorResult.put("msg", "Error getting minutes: " + e.getMessage());
+            errorResult.put("data", null);
             return errorResult;
         }
     }

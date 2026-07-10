@@ -26,21 +26,17 @@
 
                 <!-- 服务详细状态 -->
                 <div v-if="serviceStatus" class="status-details">
-                  <p><strong>ASR运行状态:</strong>
-                    <el-tag :type="serviceStatus.asr_status.is_running ? 'success' : 'danger'">
-                      {{ serviceStatus.asr_status.is_running ? '运行中' : '已停止' }}
-                    </el-tag>
-                  </p>
-                  <p><strong>活跃房间:</strong> {{ serviceStatus.asr_status.active_rooms.join(', ') || '无' }}</p>
-                  <p><strong>ASR模型:</strong> {{ serviceStatus.service_info.asr_model }}</p>
-                  <p><strong>LLM模型:</strong> {{ serviceStatus.service_info.llm_model }}</p>
+                  <p><strong>ASR工作进程:</strong> {{ serviceStatus.asrWorkerCount }} ({{ serviceStatus.asrWorkers ? serviceStatus.asrWorkers.join(', ') : 'none' }})</p>
+                  <p><strong>纪要生成进程:</strong> {{ serviceStatus.minutesWorkerCount }} ({{ serviceStatus.minutesWorkers ? serviceStatus.minutesWorkers.join(', ') : 'none' }})</p>
+                  <p><strong>录音房间 (音频):</strong> {{ serviceStatus.recordingRooms && serviceStatus.recordingRooms.audio ? serviceStatus.recordingRooms.audio.join(', ') : '无' }}</p>
+                  <p><strong>录音房间 (视频):</strong> {{ serviceStatus.recordingRooms && serviceStatus.recordingRooms.video ? serviceStatus.recordingRooms.video.join(', ') : '无' }}</p>
                 </div>
               </div>
             </el-col>
 
             <el-col :span="12">
               <div class="info-section">
-                <h4><i class="el-icon-setting"></i> 控制面板</h4>
+                <h4><i class="el-icon-setting"></i> 会议控制面板</h4>
                 <div class="control-panel">
                   <el-form :model="controlForm" label-width="100px">
                     <el-form-item label="房间ID:">
@@ -54,39 +50,18 @@
                         <el-button
                           type="success"
                           icon="el-icon-video-play"
-                          @click="startAsrRecording"
-                          :disabled="!controlForm.roomId || !controlForm.rtspUrl || asrRecordingStatus === 'recording'"
-                          :loading="startingAsrRecording">
-                          {{ asrRecordingStatus === 'recording' ? 'ASR录音中...' : '开始ASR录音' }}
+                          @click="startMeeting"
+                          :disabled="!controlForm.roomId || !controlForm.rtspUrl || meetingStatus === 'recording'"
+                          :loading="startingMeeting">
+                          {{ meetingStatus === 'recording' ? '会议录制中...' : '开始会议录制' }}
                         </el-button>
                         <el-button
                           type="warning"
                           icon="el-icon-video-pause"
-                          @click="stopAsrRecording"
-                          :disabled="asrRecordingStatus !== 'recording'"
-                          :loading="stoppingAsrRecording">
-                          停止ASR录音
-                        </el-button>
-                      </el-button-group>
-
-                      <br/><br/>
-
-                      <el-button-group>
-                        <el-button
-                          type="primary"
-                          icon="el-icon-circle-plus-outline"
-                          @click="startFullRecording"
-                          :disabled="!controlForm.roomId || !controlForm.rtspUrl || fullRecordingStatus === 'recording'"
-                          :loading="startingFullRecording">
-                          {{ fullRecordingStatus === 'recording' ? '完整录音中...' : '开始完整录音' }}
-                        </el-button>
-                        <el-button
-                          type="info"
-                          icon="el-icon-circle-close"
-                          @click="stopFullRecording"
-                          :disabled="fullRecordingStatus !== 'recording'"
-                          :loading="stoppingFullRecording">
-                          停止完整录音
+                          @click="stopMeeting"
+                          :disabled="meetingStatus !== 'recording'"
+                          :loading="stoppingMeeting">
+                          停止会议录制
                         </el-button>
                       </el-button-group>
                     </el-form-item>
@@ -104,13 +79,14 @@
       <el-col :span="24">
         <el-card class="box-card">
           <div slot="header" class="clearfix">
-            <span><i class="el-icon-chat-line-square"></i> 实时转录文本</span>
+            <span><i class="el-icon-chat-line-square"></i> 会议转录文本</span>
             <el-button
               style="float: right; padding: 3px 0"
               type="text"
               icon="el-icon-refresh"
               @click="fetchTranscript"
-              :loading="fetchingTranscript">
+              :loading="fetchingTranscript"
+              :disabled="!controlForm.roomId">
               刷新转录
             </el-button>
           </div>
@@ -119,7 +95,7 @@
             <el-input
               type="textarea"
               :rows="8"
-              placeholder="实时转录文本将在此显示..."
+              placeholder="会议转录文本将在此显示..."
               v-model="transcriptText"
               readonly>
             </el-input>
@@ -127,18 +103,18 @@
               <el-button
                 type="primary"
                 size="small"
-                icon="el-icon-download"
-                @click="downloadTranscript"
-                :disabled="!transcriptText">
-                下载转录文本
+                icon="el-icon-document-add"
+                @click="generateMinutes"
+                :disabled="!controlForm.roomId">
+                生成会议纪要
               </el-button>
               <el-button
                 type="success"
                 size="small"
-                icon="el-icon-document"
-                @click="generateMinutesFromTranscript"
+                icon="el-icon-download"
+                @click="downloadTranscript"
                 :disabled="!transcriptText">
-                生成会议纪要
+                下载转录文本
               </el-button>
             </div>
           </div>
@@ -146,31 +122,41 @@
       </el-col>
     </el-row>
 
-    <!-- 录音路径显示 -->
+    <!-- 会议纪要区域 -->
     <el-row :gutter="10" class="mb8">
       <el-col :span="12">
         <el-card class="box-card">
           <div slot="header" class="clearfix">
-            <span><i class="el-icon-folder-opened"></i> 录音文件路径</span>
+            <span><i class="el-icon-timer"></i> 纪要生成状态</span>
             <el-button
               style="float: right; padding: 3px 0"
               type="text"
               icon="el-icon-refresh"
-              @click="fetchRecordingPath"
-              :loading="fetchingRecordingPath">
-              刷新路径
+              @click="fetchMinutesStatus"
+              :loading="fetchingMinutesStatus"
+              :disabled="!controlForm.roomId">
+              刷新状态
             </el-button>
           </div>
 
-          <div class="path-container">
-            <p v-if="recordingPath"><strong>录音文件路径:</strong></p>
-            <p v-if="recordingPath" class="path-text">{{ recordingPath }}</p>
-            <p v-else class="no-data">暂无录音文件</p>
+          <div class="status-container">
+            <div v-if="minutesStatusData">
+              <p><strong>状态:</strong>
+                <el-tag
+                  :type="getStatusTag(minutesStatusData.status)"
+                  size="medium">
+                  {{ getStatusText(minutesStatusData.status) }}
+                </el-tag>
+              </p>
+              <p><strong>房间ID:</strong> {{ minutesStatusData.roomId }}</p>
+              <p><strong>进度:</strong> {{ minutesStatusData.progress || 'N/A' }}</p>
+              <p><strong>消息:</strong> {{ minutesStatusData.message || 'N/A' }}</p>
+            </div>
+            <p v-else class="no-data">暂无纪要生成状态信息</p>
           </div>
         </el-card>
       </el-col>
 
-      <!-- 会议纪要区域 -->
       <el-col :span="12">
         <el-card class="box-card">
           <div slot="header" class="clearfix">
@@ -180,7 +166,8 @@
               type="text"
               icon="el-icon-refresh"
               @click="fetchMinutes"
-              :loading="fetchingMinutes">
+              :loading="fetchingMinutes"
+              :disabled="!controlForm.roomId">
               刷新纪要
             </el-button>
           </div>
@@ -197,7 +184,7 @@
               <el-button
                 type="primary"
                 size="small"
-                icon="el-icon-document-add"
+                icon="el-icon-refresh"
                 @click="generateMinutes"
                 :disabled="!controlForm.roomId">
                 重新生成纪要
@@ -216,14 +203,22 @@
       </el-col>
     </el-row>
 
-    <!-- 自动刷新定时器 -->
-    <el-dialog title="自动刷新设置" :visible.sync="refreshDialogVisible">
-      <el-form :model="refreshSettings">
-        <el-form-item label="刷新间隔(秒)">
+    <!-- 自动刷新设置 -->
+    <el-dialog title="自动刷新设置" :visible.sync="refreshDialogVisible" width="500px">
+      <el-form :model="refreshSettings" label-width="120px">
+        <el-form-item label="转录刷新间隔(秒)">
           <el-slider
-            v-model="refreshSettings.interval"
+            v-model="refreshSettings.transcriptInterval"
             :min="5"
-            :max="60"
+            :max="120"
+            show-input>
+          </el-slider>
+        </el-form-item>
+        <el-form-item label="状态刷新间隔(秒)">
+          <el-slider
+            v-model="refreshSettings.statusInterval"
+            :min="10"
+            :max="300"
             show-input>
           </el-slider>
         </el-form-item>
@@ -242,15 +237,12 @@
 <script>
 import {
   healthCheck,
-  startAsrRecording,
-  startFullRecording,
-  stopAsrRecording,
-  stopFullRecording,
-  getRecordingPath,
+  startMeeting,
+  stopMeeting,
   getTranscript,
   generateMinutes,
   getMinutes,
-  getStatus
+  getMinutesStatus
 } from "@/api/huiyi/aiService";
 
 export default {
@@ -270,33 +262,32 @@ export default {
         rtspUrl: ''
       },
 
-      // 录音状态
-      asrRecordingStatus: '', // 'recording' 或空
-      fullRecordingStatus: '', // 'recording' 或空
-      startingAsrRecording: false,
-      stoppingAsrRecording: false,
-      startingFullRecording: false,
-      stoppingFullRecording: false,
+      // 会议录制状态
+      meetingStatus: '', // 'recording' 或空
+      startingMeeting: false,
+      stoppingMeeting: false,
 
       // 转录文本
       transcriptText: '',
       fetchingTranscript: false,
 
-      // 录音路径
-      recordingPath: '',
-      fetchingRecordingPath: false,
-
       // 会议纪要
       minutesText: '',
       fetchingMinutes: false,
 
+      // 会议纪要状态
+      minutesStatusData: null,
+      fetchingMinutesStatus: false,
+
       // 自动刷新设置
       refreshDialogVisible: false,
       refreshSettings: {
-        interval: 10,
+        transcriptInterval: 30,
+        statusInterval: 60,
         enabled: false
       },
-      refreshTimer: null
+      transcriptTimer: null,
+      statusTimer: null
     };
   },
 
@@ -310,9 +301,7 @@ export default {
 
   destroyed() {
     // 清理定时器
-    if (this.refreshTimer) {
-      clearInterval(this.refreshTimer);
-    }
+    this.clearTimers();
   },
 
   methods: {
@@ -321,18 +310,30 @@ export default {
       this.checkingHealth = true;
       try {
         const response = await healthCheck();
-        this.healthStatus = response.data;
 
         if (response.code === 200) {
+          this.healthStatus = response.data.data;
           this.healthStatusTag = 'success';
           this.healthStatusText = '服务正常';
+
+          // 更新服务状态信息
+          this.serviceStatus = response.data.data;
+
+          // 更新会议录制状态
+          if (this.serviceStatus && this.serviceStatus.recordingRooms) {
+            const audioRooms = this.serviceStatus.recordingRooms.audio || [];
+            const videoRooms = this.serviceStatus.recordingRooms.video || [];
+            const allRooms = [...new Set([...audioRooms, ...videoRooms])];
+
+            // 如果当前房间在录制列表中，则标记为录制中
+            if (allRooms.includes(this.controlForm.roomId)) {
+              this.meetingStatus = 'recording';
+            }
+          }
         } else {
           this.healthStatusTag = 'warning';
           this.healthStatusText = '服务异常';
         }
-
-        // 同时获取服务状态
-        this.fetchStatus();
       } catch (error) {
         console.error('健康检查失败:', error);
         this.healthStatusTag = 'danger';
@@ -342,127 +343,64 @@ export default {
       }
     },
 
-    // 获取服务状态
-    async fetchStatus() {
-      try {
-        const response = await getStatus();
-        if (response.code === 200) {
-          this.serviceStatus = response.data;
-
-          // 更新录音状态
-          this.asrRecordingStatus = this.serviceStatus.asr_status.is_running ? 'recording' : '';
-        }
-      } catch (error) {
-        console.error('获取服务状态失败:', error);
-      }
-    },
-
-    // 开始ASR录音
-    async startAsrRecording() {
+    // 开始会议录制
+    async startMeeting() {
       if (!this.controlForm.roomId || !this.controlForm.rtspUrl) {
         this.$message.warning('请填写房间ID和RTSP地址');
         return;
       }
 
-      this.startingAsrRecording = true;
+      this.startingMeeting = true;
       try {
-        const response = await startAsrRecording({
+        const response = await startMeeting({
           roomId: this.controlForm.roomId,
           rtspUrl: this.controlForm.rtspUrl
         });
 
         if (response.code === 200) {
-          this.$message.success('ASR录音已开始');
-          this.asrRecordingStatus = 'recording';
+          this.$message.success('会议录制已开始');
+          this.meetingStatus = 'recording';
           // 刷新状态
           setTimeout(() => {
             this.checkHealth();
           }, 1000);
         } else {
-          this.$message.error(response.msg || '开始ASR录音失败');
+          this.$message.error(response.msg || '开始会议录制失败');
         }
       } catch (error) {
-        console.error('开始ASR录音失败:', error);
-        this.$message.error('开始ASR录音失败: ' + (error.message || '网络错误'));
+        console.error('开始会议录制失败:', error);
+        this.$message.error('开始会议录制失败: ' + (error.message || '网络错误'));
       } finally {
-        this.startingAsrRecording = false;
+        this.startingMeeting = false;
       }
     },
 
-    // 停止ASR录音
-    async stopAsrRecording() {
+    // 停止会议录制
+    async stopMeeting() {
       if (!this.controlForm.roomId) {
         this.$message.warning('请填写房间ID');
         return;
       }
 
-      this.stoppingAsrRecording = true;
+      this.stoppingMeeting = true;
       try {
-        const response = await stopAsrRecording(this.controlForm.roomId);
+        const response = await stopMeeting(this.controlForm.roomId);
 
         if (response.code === 200) {
-          this.$message.success('ASR录音已停止');
-          this.asrRecordingStatus = '';
+          this.$message.success('会议录制已停止');
+          this.meetingStatus = '';
           // 刷新状态
           setTimeout(() => {
             this.checkHealth();
           }, 1000);
         } else {
-          this.$message.error(response.msg || '停止ASR录音失败');
+          this.$message.error(response.msg || '停止会议录制失败');
         }
       } catch (error) {
-        console.error('停止ASR录音失败:', error);
-        this.$message.error('停止ASR录音失败: ' + (error.message || '网络错误'));
+        console.error('停止会议录制失败:', error);
+        this.$message.error('停止会议录制失败: ' + (error.message || '网络错误'));
       } finally {
-        this.stoppingAsrRecording = false;
-      }
-    },
-
-    // 开始完整录音
-    async startFullRecording() {
-      if (!this.controlForm.roomId || !this.controlForm.rtspUrl) {
-        this.$message.warning('请填写房间ID和RTSP地址');
-        return;
-      }
-
-      this.startingFullRecording = true;
-      try {
-        const response = await startFullRecording({
-          roomId: this.controlForm.roomId,
-          rtspUrl: this.controlForm.rtspUrl
-        });
-
-        if (response.code === 200) {
-          this.$message.success('完整录音已开始');
-          this.fullRecordingStatus = 'recording';
-        } else {
-          this.$message.error(response.msg || '开始完整录音失败');
-        }
-      } catch (error) {
-        console.error('开始完整录音失败:', error);
-        this.$message.error('开始完整录音失败: ' + (error.message || '网络错误'));
-      } finally {
-        this.startingFullRecording = false;
-      }
-    },
-
-    // 停止完整录音
-    async stopFullRecording() {
-      this.stoppingFullRecording = true;
-      try {
-        const response = await stopFullRecording();
-
-        if (response.code === 200) {
-          this.$message.success('完整录音已停止');
-          this.fullRecordingStatus = '';
-        } else {
-          this.$message.error(response.msg || '停止完整录音失败');
-        }
-      } catch (error) {
-        console.error('停止完整录音失败:', error);
-        this.$message.error('停止完整录音失败: ' + (error.message || '网络错误'));
-      } finally {
-        this.stoppingFullRecording = false;
+        this.stoppingMeeting = false;
       }
     },
 
@@ -479,13 +417,8 @@ export default {
 
         if (response.code === 200) {
           if (response.data && response.data.transcript) {
-            // 将转录数组转换为文本
-            if (Array.isArray(response.data.transcript)) {
-              this.transcriptText = response.data.transcript.join('\n');
-            } else {
-              this.transcriptText = response.data.transcript;
-            }
-            this.$message.success(`获取到 ${response.data.count || 0} 条转录`);
+            this.transcriptText = response.data.transcript;
+            this.$message.success('转录文本获取成功');
           } else {
             this.transcriptText = '';
             this.$message.info('暂无转录文本');
@@ -498,36 +431,6 @@ export default {
         this.$message.error('获取转录文本失败: ' + (error.message || '网络错误'));
       } finally {
         this.fetchingTranscript = false;
-      }
-    },
-
-    // 获取录音路径
-    async fetchRecordingPath() {
-      if (!this.controlForm.roomId) {
-        this.$message.warning('请填写房间ID');
-        return;
-      }
-
-      this.fetchingRecordingPath = true;
-      try {
-        const response = await getRecordingPath(this.controlForm.roomId);
-
-        if (response.code === 200) {
-          if (response.data && response.data.recording_path) {
-            this.recordingPath = response.data.recording_path;
-            this.$message.success('录音路径获取成功');
-          } else {
-            this.recordingPath = '';
-            this.$message.info('暂无录音文件');
-          }
-        } else {
-          this.$message.error(response.msg || '获取录音路径失败');
-        }
-      } catch (error) {
-        console.error('获取录音路径失败:', error);
-        this.$message.error('获取录音路径失败: ' + (error.message || '网络错误'));
-      } finally {
-        this.fetchingRecordingPath = false;
       }
     },
 
@@ -561,6 +464,36 @@ export default {
       }
     },
 
+    // 获取会议纪要状态
+    async fetchMinutesStatus() {
+      if (!this.controlForm.roomId) {
+        this.$message.warning('请填写房间ID');
+        return;
+      }
+
+      this.fetchingMinutesStatus = true;
+      try {
+        const response = await getMinutesStatus(this.controlForm.roomId);
+
+        if (response.code === 200) {
+          if (response.data) {
+            this.minutesStatusData = response.data;
+            this.$message.success('纪要状态获取成功');
+          } else {
+            this.minutesStatusData = null;
+            this.$message.info('暂无纪要状态信息');
+          }
+        } else {
+          this.$message.error(response.msg || '获取纪要状态失败');
+        }
+      } catch (error) {
+        console.error('获取纪要状态失败:', error);
+        this.$message.error('获取纪要状态失败: ' + (error.message || '网络错误'));
+      } finally {
+        this.fetchingMinutesStatus = false;
+      }
+    },
+
     // 生成会议纪要
     async generateMinutes() {
       if (!this.controlForm.roomId) {
@@ -569,53 +502,20 @@ export default {
       }
 
       try {
-        const response = await generateMinutes({
-          roomId: this.controlForm.roomId,
-          transcript: this.transcriptText
-        });
+        const response = await generateMinutes(this.controlForm.roomId);
 
         if (response.code === 200) {
-          if (response.data && response.data.minutes) {
-            this.minutesText = response.data.minutes;
-            this.$message.success('会议纪要生成成功');
-          } else {
-            this.$message.warning('会议纪要生成中，请稍后再试');
-          }
+          this.$message.success('会议纪要生成任务已提交，正在后台处理');
+          // 稍后刷新状态
+          setTimeout(() => {
+            this.fetchMinutesStatus();
+          }, 2000);
         } else {
-          this.$message.error(response.msg || '生成会议纪要失败');
+          this.$message.error(response.msg || '提交纪要生成任务失败');
         }
       } catch (error) {
-        console.error('生成会议纪要失败:', error);
-        this.$message.error('生成会议纪要失败: ' + (error.message || '网络错误'));
-      }
-    },
-
-    // 从当前转录文本生成会议纪要
-    async generateMinutesFromTranscript() {
-      if (!this.controlForm.roomId) {
-        this.$message.warning('请填写房间ID');
-        return;
-      }
-
-      try {
-        const response = await generateMinutes({
-          roomId: this.controlForm.roomId,
-          transcript: this.transcriptText
-        });
-
-        if (response.code === 200) {
-          if (response.data && response.data.minutes) {
-            this.minutesText = response.data.minutes;
-            this.$message.success('会议纪要生成成功');
-          } else {
-            this.$message.warning('会议纪要生成中，请稍后再试');
-          }
-        } else {
-          this.$message.error(response.msg || '生成会议纪要失败');
-        }
-      } catch (error) {
-        console.error('生成会议纪要失败:', error);
-        this.$message.error('生成会议纪要失败: ' + (error.message || '网络错误'));
+        console.error('提交纪要生成任务失败:', error);
+        this.$message.error('提交纪要生成任务失败: ' + (error.message || '网络错误'));
       }
     },
 
@@ -649,31 +549,82 @@ export default {
       link.click();
     },
 
+    // 获取状态标签类型
+    getStatusTag(status) {
+      switch (status) {
+        case 'completed':
+          return 'success';
+        case 'processing':
+          return 'warning';
+        case 'pending':
+          return 'info';
+        case 'failed':
+          return 'danger';
+        default:
+          return 'info';
+      }
+    },
+
+    // 获取状态文本
+    getStatusText(status) {
+      switch (status) {
+        case 'completed':
+          return '已完成';
+        case 'processing':
+          return '处理中';
+        case 'pending':
+          return '待处理';
+        case 'failed':
+          return '失败';
+        case 'not_found':
+          return '未找到';
+        default:
+          return status;
+      }
+    },
+
     // 设置自动刷新
     setupAutoRefresh() {
-      if (this.refreshSettings.enabled && this.refreshSettings.interval > 0) {
-        this.refreshTimer = setInterval(() => {
-          // 刷新转录文本
-          if (this.controlForm.roomId) {
-            this.fetchTranscript();
-            this.fetchMinutes();
-            this.fetchRecordingPath();
-          }
-        }, this.refreshSettings.interval * 1000);
+      // 清理旧的定时器
+      this.clearTimers();
+
+      if (this.refreshSettings.enabled) {
+        // 设置转录刷新定时器
+        if (this.refreshSettings.transcriptInterval > 0) {
+          this.transcriptTimer = setInterval(() => {
+            if (this.controlForm.roomId) {
+              this.fetchTranscript();
+            }
+          }, this.refreshSettings.transcriptInterval * 1000);
+        }
+
+        // 设置状态刷新定时器
+        if (this.refreshSettings.statusInterval > 0) {
+          this.statusTimer = setInterval(() => {
+            if (this.controlForm.roomId) {
+              this.fetchMinutesStatus();
+              this.fetchMinutes();
+            }
+          }, this.refreshSettings.statusInterval * 1000);
+        }
+      }
+    },
+
+    // 清理定时器
+    clearTimers() {
+      if (this.transcriptTimer) {
+        clearInterval(this.transcriptTimer);
+        this.transcriptTimer = null;
+      }
+      if (this.statusTimer) {
+        clearInterval(this.statusTimer);
+        this.statusTimer = null;
       }
     },
 
     // 保存刷新设置
     saveRefreshSettings() {
       this.refreshDialogVisible = false;
-
-      // 清除旧的定时器
-      if (this.refreshTimer) {
-        clearInterval(this.refreshTimer);
-        this.refreshTimer = null;
-      }
-
-      // 根据设置重新设置定时器
       this.setupAutoRefresh();
     }
   }
@@ -720,14 +671,13 @@ export default {
   width: 100%;
 }
 
-.path-container {
+.status-container {
   padding: 10px 0;
 }
 
-.path-text {
-  word-break: break-all;
-  color: #409EFF;
-  font-family: monospace;
+.status-container p {
+  margin: 8px 0;
+  font-size: 14px;
 }
 
 .no-data {
@@ -737,5 +687,9 @@ export default {
 
 .el-button-group {
   margin-right: 10px;
+}
+
+.dialog-footer {
+  text-align: right;
 }
 </style>

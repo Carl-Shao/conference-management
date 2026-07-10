@@ -1,0 +1,6 @@
+# AI服务配置
+ai:
+  services:
+    # AI服务API地址
+    api:
+      url: http://localhost:5000
